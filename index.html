@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Card with Drag and Drop</title>
+    <title>License Plate Recognition</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -38,7 +38,7 @@
             margin: 0 0 20px 0;
         }
         .card input[type="file"] {
-            display: none; /* Hide the default file input */
+            display: none;
         }
         .card button {
             padding: 10px 20px;
@@ -51,24 +51,33 @@
         .card button:hover {
             background-color: #0056b3;
         }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>Upload Image</h2>
+        <h2>License Plate Recognition</h2>
         <div class="drop-area" id="drop-area">
             <p>Drag & drop an image here</p>
             <p>or</p>
             <label for="fileElem" class="button">Choose File</label>
             <input type="file" id="fileElem" name="image" accept="image/*" required>
         </div>
-        <button id="uploadButton">Upload</button>
+        <button id="uploadButton">Recognize Plate</button>
+        <div id="result"></div>
     </div>
 
     <script>
         const dropArea = document.getElementById('drop-area');
         const fileInput = document.getElementById('fileElem');
         const uploadButton = document.getElementById('uploadButton');
+        const resultDiv = document.getElementById('result');
 
         // Prevent default drag behaviors
         ;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -101,15 +110,64 @@
             handleFiles(fileInput.files);
         });
 
+        uploadButton.addEventListener('click', () => {
+            if (fileInput.files.length > 0) {
+                uploadAndRecognize(fileInput.files[0]);
+            } else {
+                alert('Please select an image first.');
+            }
+        });
+
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
         }
 
         function handleFiles(files) {
-            // Add your file handling logic here (e.g., upload the file)
-            console.log(files); // For demonstration, we log the files to the console
-            // You can add more code here to handle the file upload
+            if (files.length > 0) {
+                fileInput.files = files;
+                console.log('File selected:', files[0].name);
+            }
+        }
+
+        function uploadAndRecognize(file) {
+            const formData = new FormData();
+            formData.append('upload', file);
+            formData.append('regions', 'us-ca'); // Adjust based on region needs
+
+            fetch('https://api.platerecognizer.com/v1/plate-reader/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Token a9786e0c5f3e8eff962ad7f4e438f7b787e0000d'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayResult(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultDiv.innerHTML = '<p>An error occurred. Please try again.</p>';
+            });
+        }
+
+        function displayResult(data) {
+            if (data.results && data.results.length > 0) {
+                const plate = data.results[0].plate;
+                const region = data.results[0].region.code;
+                const vehicle = data.results[0].vehicle;
+
+                resultDiv.innerHTML = `
+                    <h3>Recognition Result:</h3>
+                    <p><strong>Plate:</strong> ${plate}</p>
+                    <p><strong>Region:</strong> ${region}</p>
+                    <p><strong>Vehicle Type:</strong> ${vehicle.type}</p>
+                    <p><strong>Vehicle Make:</strong> ${vehicle.make}</p>
+                `;
+            } else {
+                resultDiv.innerHTML = '<p>No license plate detected. Please try another image.</p>';
+            }
         }
     </script>
 </body>
